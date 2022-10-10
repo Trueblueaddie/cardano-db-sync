@@ -20,9 +20,13 @@
       flake = false;
     };
     customConfig = { url = "path:./custom-config"; };
+    tullia = {
+      url = "github:input-output-hk/tullia";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, iohkNix, cardano-world, haskellNix, nixpkgs, utils, customConfig, ... }:
+  outputs = { self, iohkNix, cardano-world, haskellNix, nixpkgs, utils, tullia, customConfig, ... }:
     let
       inherit (haskellNix) config;
       inherit (nixpkgs) lib;
@@ -129,7 +133,10 @@
         } # nix run .#<exe>
           // (collectExes flake.apps);
 
-      }) // {
+        ciJobs = import ./release.nix {
+          supportedSystems = [system];
+        };
+      } // tullia.fromSimple system (import ./nix/tullia.nix self system)) // {
         overlay = final: prev:
           with self.legacyPackages.${final.system}; {
             inherit cardano-db-sync cardano-node dockerImage;
@@ -142,4 +149,9 @@
           };
         };
       };
+
+  nixConfig = {
+    extra-substituters = [ "https://cache.iog.io" ];
+    extra-trusted-public-keys = [ "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=" ];
+  };
 }
